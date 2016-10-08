@@ -64,6 +64,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Field.cs" />
+    <Compile Include="Assets\ObjectBuilderEditor.cs" />
+    <Compile Include="Assets\ObjectBuilderScript.cs" />
     <Compile Include="Assets\ObjectFollow.cs" />
     <Compile Include="Assets\RobotController.cs" />
     <Compile Include="Assets\Wallcounter.cs" />
