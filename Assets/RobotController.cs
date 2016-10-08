@@ -2,6 +2,27 @@
 using System.Collections;
 using System.Collections.Generic;
 
+public class node {
+    public float x;
+    public float z;
+    public ArrayList edges;
+
+    public node() {
+        edges = new ArrayList();
+    }
+    public node(float gZ, float gX) {
+        edges = new ArrayList();
+        z = gZ;
+        x = gX;
+    }
+}
+
+public class edge {
+    int start;
+    int end;
+}
+
+
 public class RobotController : MonoBehaviour {
 
 	public float speed;
@@ -12,16 +33,37 @@ public class RobotController : MonoBehaviour {
 	GameObject followArrow;
 	public RunType runtype; 
 	public enum RunType{one, two, three};
+    public ArrayList nodes;
 
-	// Use this for initialization
-	void Start () {
+    // Use this for initialization
+    void Start () {
 		followArrow = GameObject.FindObjectOfType<ObjectFollow> ().gameObject;
-	}
+        nodes = new ArrayList();
+    }
+
+    void makeRRt() {
+        Vector3 start = myLocation();
+
+        bool success = false;
+        while (!success) {
+        }
+    }
+
+    void getRandom() {
+
+    }
+
+    void findClosest() {
+
+    }
+
+    void testLineViability() {
+
+    }
 
 
-
-	// Update is called once per frame
-	void Update () {
+    // Update is called once per frame
+    void Update () {
 
 		Vector3 toMove = getManualInput ();
 	
