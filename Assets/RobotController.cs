@@ -174,7 +174,7 @@ public class RobotController : MonoBehaviour {
 			break;
 
 		case RunType.three:
-                toMove = new Vector3(1, 0, 1);
+                toMove = new Vector3(0, 0, 0);
 			//For whatever else
 			//feel free to add more 
 
