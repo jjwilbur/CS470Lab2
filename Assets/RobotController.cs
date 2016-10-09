@@ -1,26 +1,68 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System;
+using System.Linq;
 
 public class node {
-    public float x;
-    public float z;
+    public Vector2 point;
     public ArrayList edges;
 
     public node() {
         edges = new ArrayList();
     }
-    public node(float gZ, float gX) {
+    public node(Vector2 gPoint) {
         edges = new ArrayList();
-        z = gZ;
-        x = gX;
+        point = gPoint;
+    }
+    public void setPoint(Vector2 gPoint) {
+        point = gPoint;
+    }
+    public float distance(Vector2 w) {
+        return Mathf.Sqrt(Mathf.Pow((point.x - w.x), 2.0f) + Mathf.Pow((point.y - w.y), 2.0f));
     }
 }
 
 public class edge {
-    int start;
-    int end;
+    public int start;
+    public int end;
+    public edge() {
+        start = 0;
+        end = 0;
+    }
+    public edge(int s, int e) {
+        start = s;
+        end = e;
+    }
 }
+
+public class line {
+    node start;
+    node end;
+    public line() {
+        start = new node();
+        end = new node();
+    }
+    public float testDistance(Vector2 v, Vector2 w, Vector2 p) {
+        float l2 = Mathf.Pow(distance(v, w), 2.0f);
+            if (l2 == 0.0)
+                return distance(p, v);    
+            float t = Mathf.Max(0, Mathf.Min(1, dot(p - v, w - v) / l2));
+            Vector2 projection = v + t * (w - v);
+            return distance(p, projection);
+    }
+
+    public float dot(Vector2 v, Vector2 w) {
+        return ((v.x * w.x) + (v.y * w.y));
+    }
+
+    public float distance(Vector2 v, Vector2 w) {
+        return Mathf.Sqrt(Mathf.Pow((v.x - w.x), 2.0f) + Mathf.Pow((v.y - w.y), 2.0f));
+    }
+
+}
+
+
 
 
 public class RobotController : MonoBehaviour {
@@ -33,28 +75,77 @@ public class RobotController : MonoBehaviour {
 	GameObject followArrow;
 	public RunType runtype; 
 	public enum RunType{one, two, three};
-    public ArrayList nodes;
+    public List<node> nodes;
+    System.Random rand;
 
     // Use this for initialization
     void Start () {
 		followArrow = GameObject.FindObjectOfType<ObjectFollow> ().gameObject;
-        nodes = new ArrayList();
+        nodes = new List<node>();
+        rand = new System.Random();
+        makeRRt();
     }
 
     void makeRRt() {
         Vector3 start = myLocation();
-
+        node starter = new node(new Vector2(start.x, start.z));
+        nodes.Add(starter);
         bool success = false;
+        bool hit = false;
+        int closest;
+        float hitDistance = 4.2f;
+        line line = new line();
+        List<Field> fields = getPowerFields();
         while (!success) {
+            Vector2 randpoint = getRandom();
+            closest = findClosest(randpoint);
+            hit = false;
+    
+            for (int i = 0; i < fields.Count; i++) {
+                Field field = fields.ElementAt(i);
+                if (line.testDistance(randpoint, nodes.ElementAt(closest).point, new Vector2(field.getLocation().x, field.getLocation().z)) < hitDistance) {
+                    hit = true;
+                }
+            }
+            if(!hit) {
+                int count = nodes.Count;
+                node addNode = new node(randpoint);
+                nodes.Add(addNode);
+                nodes.ElementAt(closest).edges.Add(new edge(closest, count));
+                if (distance(addNode.point) < 0.5) {
+                    success = true;
+                }
+            }
         }
+        int iAmDoneWithLife = 0;
     }
 
-    void getRandom() {
-
+    public float distance(Vector2 testPoint) {
+        return Mathf.Sqrt(Mathf.Pow((testPoint.x - 18.9f), 2.0f) + Mathf.Pow((testPoint.y - 18.9f), 2.0f));
     }
 
-    void findClosest() {
+    Vector2 getRandom() { // randrom through X = -21 and y = -21 and x = 21 ,y = 21
+        float x = (float)(rand.NextDouble() * 42.0);
+        x -= 21;
+        float z = (float)(rand.NextDouble() * 42.0);
+        z -= 21;
+        Vector2 result;
+        result.x = x;
+        result.y = z;
+        return result;
+    }
 
+    int findClosest(Vector2 testNode) {
+        int numberInArray = 0;
+        float distance = float.MaxValue;
+        for(int i = 0; i < nodes.Count; i++) {
+            node test = nodes.ElementAt(i);
+            if (test.distance(testNode) < distance) {
+                distance = test.distance(testNode);
+                numberInArray = i;
+            }
+        }
+        return numberInArray;
     }
 
     void testLineViability() {
