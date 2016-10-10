@@ -1,4 +1,8 @@
 ﻿using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+using System;
+using System.Linq;
 
 using System.Collections;
 
@@ -22,8 +26,8 @@ public class ObjectBuilderScript : MonoBehaviour
                 nodes[i, j].location.x = (float)(((i * 4.2) + 2.1) - 21);
                 nodes[i, j].location.y = 1.5f;
                 nodes[i, j].location.z = (float)(((j * 4.2) + 2.1) - 21);
-                if (Physics.CheckSphere(nodes[i, j].location, 1f)) {
-                    nodes[1, j] = null;
+                if (Physics.CheckSphere(nodes[i, j].location, .1f)) {
+                    nodes[i, j] = null;
                 }
             }
         }
