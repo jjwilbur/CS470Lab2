@@ -68,7 +68,7 @@ public class line {
 public class RobotController : MonoBehaviour {
 
 	public float speed;
-
+    GameObject ground;
 	//Used to keep track of "forward direction" in manual control
 	float rotationAngle = 0;
 	//Indicates which way is "forward" in manual control
@@ -78,12 +78,18 @@ public class RobotController : MonoBehaviour {
     public List<node> nodes;
     System.Random rand;
 
+
     // Use this for initialization
     void Start () {
+        ground = GameObject.Find("Ground");
 		followArrow = GameObject.FindObjectOfType<ObjectFollow> ().gameObject;
         nodes = new List<node>();
         rand = new System.Random();
-        makeRRt();
+        //makeRRt();
+    }
+
+    void buildGrid() {
+
     }
 
     void makeRRt() {
@@ -156,7 +162,7 @@ public class RobotController : MonoBehaviour {
     // Update is called once per frame
     void Update () {
 
-		Vector3 toMove = getManualInput ();
+        Vector3 toMove = new Vector3();// getManualInput ();
 	
 		//Alter the toMove variable here based on the varius fields in the scene.
 		//You can set the runtype in Unity in the Inspector Window
@@ -265,11 +271,12 @@ public class RobotController : MonoBehaviour {
 			break;
 
 		case RunType.three:
-                toMove = new Vector3(0, 0, 0);
-			//For whatever else
-			//feel free to add more 
 
-			break;
+                //toMove = new Vector3(0, 0, 0);
+                //For whatever else
+                //feel free to add more 
+                toMove = new Vector3(0, 0, 1);
+                break;
 
 		}
 
@@ -279,6 +286,39 @@ public class RobotController : MonoBehaviour {
         
 
 	}
+
+    public Vector3 moveTowards(Vector3 location) {
+        Vector3 toMove = new Vector3();
+        Vector3 vel = this.GetComponent<Rigidbody>().velocity;
+
+        toMove += new Vector3(-vel.x, -vel.y, -vel.z);
+        toMove += location - myLocation();
+
+        return Vector3.zero;
+    }
+
+    public void aStar() {
+
+    }
+
+    public void stop() {
+        Vector3 vel = GetComponent<Rigidbody>().velocity;
+        vel = new Vector3(vel.x, vel.y,vel.z);
+        Vector3 orig = new Vector3(vel.x, vel.y, vel.z);
+        bool stopped = false;
+        Vector3 toStop;
+        while (!stopped) {
+            toStop = -vel.normalized;// * Time.deltaTime;// * speed;
+            vel += toStop;
+            if (orig.x +.1 >= vel.x && orig.y + .1 >= vel.y && orig.z + .1 >= vel.z) {
+                stopped = true;
+            }
+            //vel += toStop;
+            move(toStop);
+        }
+
+
+    }
 
 
 	// add a force to me in the given direction, this input force is normalized (made to have a magnitude of 1) for your convenience

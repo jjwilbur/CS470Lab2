@@ -1,4 +1,4 @@
 sceneSetups:
-- path: Assets/MazeTemplate.unity
+- path: Assets/Maze.unity
   isLoaded: 1
   isActive: 1
