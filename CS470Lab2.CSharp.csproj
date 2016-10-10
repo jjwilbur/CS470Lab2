@@ -63,12 +63,19 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\FastPriorityQueue.cs" />
+    <Compile Include="Assets\FastPriorityQueueNode.cs" />
     <Compile Include="Assets\Field.cs" />
     <Compile Include="Assets\Grid.cs" />
+    <Compile Include="Assets\IFixedSizePriorityQueue.cs" />
+    <Compile Include="Assets\IPriorityQueue.cs" />
     <Compile Include="Assets\ObjectBuilderEditor.cs" />
     <Compile Include="Assets\ObjectBuilderScript.cs" />
     <Compile Include="Assets\ObjectFollow.cs" />
     <Compile Include="Assets\RobotController.cs" />
+    <Compile Include="Assets\SimplePriorityQueue.cs" />
+    <Compile Include="Assets\StablePriorityQueue.cs" />
+    <Compile Include="Assets\StablePriorityQueueNode.cs" />
     <Compile Include="Assets\Wallcounter.cs" />
     <Compile Include="Assets\cameraController.cs" />
   </ItemGroup>

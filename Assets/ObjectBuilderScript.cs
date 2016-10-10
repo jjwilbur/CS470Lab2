@@ -13,7 +13,7 @@ public class ObjectBuilderScript : MonoBehaviour
     public Node[,] nodes = new Node[10, 10];
 	//this gets called when you press the button in the unity inspector
 
-	public void BuildObject() {
+	public Node[,] BuildObject() {
         beenBuilt = true;
         nodes = new Node[10, 10];
         //this is where you initialize all of your nodes/grid
@@ -26,11 +26,14 @@ public class ObjectBuilderScript : MonoBehaviour
                 nodes[i, j].location.x = (float)(((i * 4.2) + 2.1) - 21);
                 nodes[i, j].location.y = 1.5f;
                 nodes[i, j].location.z = (float)(((j * 4.2) + 2.1) - 21);
+                nodes[i, j].i = i;
+                nodes[i, j].j = j;
                 if (Physics.CheckSphere(nodes[i, j].location, .1f)) {
                     nodes[i, j] = null;
                 }
             }
         }
+        return nodes;
 	}
 
 	void OnDrawGizmos()
@@ -54,15 +57,18 @@ public class ObjectBuilderScript : MonoBehaviour
 public class Node 
 {
     public Vector3 location;
-    public bool showNode;
+    public bool visited;
+    public float distanceTraveled;
+    public float remainingDistance;
+    public Node prevNode;
+    public int i;
+    public int j;
 
     public Node()
     {
         location = new Vector3(0, 0, 0);
-        showNode = true;
-    }
-    public Vector3 getLocation()
-    {
-        return location;
+        visited = false;
+        distanceTraveled = 0;
+        remainingDistance = 0;
     }
 }

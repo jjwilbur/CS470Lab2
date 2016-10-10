@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using Priority_Queue;
 
 public class node {
     public Vector2 point;
@@ -68,7 +69,7 @@ public class line {
 public class RobotController : MonoBehaviour {
 
 	public float speed;
-    GameObject ground;
+    GameObject grid;
 	//Used to keep track of "forward direction" in manual control
 	float rotationAngle = 0;
 	//Indicates which way is "forward" in manual control
@@ -77,19 +78,52 @@ public class RobotController : MonoBehaviour {
 	public enum RunType{one, two, three};
     public List<node> nodes;
     System.Random rand;
-
-
+    Node[,] gridNodes;
+    Node curNode;
+    SimplePriorityQueue<Node> aStar = new SimplePriorityQueue<Node>();
+    Field goal;
     // Use this for initialization
     void Start () {
-        ground = GameObject.Find("Ground");
+        grid = GameObject.Find("GameObject");
+        var builder = grid.GetComponent<ObjectBuilderScript>();
+        gridNodes = builder.BuildObject();
+
 		followArrow = GameObject.FindObjectOfType<ObjectFollow> ().gameObject;
         nodes = new List<node>();
         rand = new System.Random();
+
+        if(runtype == RunType.three)
+        {
+            goal = getFieldofType(1)[0];
+            Node n = new Node();
+            n.distanceTraveled = 0;
+            n.location = myLocation();
+            n.visited = true;
+            n.remainingDistance = distance(goal.getLocation());
+            aStar.Enqueue(n, n.distanceTraveled + n.remainingDistance);
+            makeAStar();
+        }
         //makeRRt();
     }
 
-    void buildGrid() {
-
+    void makeAStar()
+    {
+        bool done = false;
+        Node curLoc;
+        while (!done)
+        {
+            curLoc = aStar.Dequeue();
+            if(gridNodes[curLoc.i +1,curLoc.j] != null && !gridNodes[curLoc.i + 1, curLoc.j].visited)
+            {
+                Node n = gridNodes[curLoc.i + 1, curLoc.j];
+                n.distanceTraveled = curLoc.distanceTraveled + distance(curNode.location, n.location);
+                //n.location = myLocation();
+                n.visited = true;
+                n.prevNode = curLoc;
+                n.remainingDistance = distance(goal.getLocation());
+                aStar.Enqueue(n, n.distanceTraveled + n.remainingDistance);
+            }
+        }
     }
 
     void makeRRt() {
@@ -102,6 +136,7 @@ public class RobotController : MonoBehaviour {
         float hitDistance = 4.2f;
         line line = new line();
         List<Field> fields = getPowerFields();
+        
         while (!success) {
             Vector2 randpoint = getRandom();
             closest = findClosest(randpoint);
@@ -128,6 +163,18 @@ public class RobotController : MonoBehaviour {
 
     public float distance(Vector2 testPoint) {
         return Mathf.Sqrt(Mathf.Pow((testPoint.x - 18.9f), 2.0f) + Mathf.Pow((testPoint.y - 18.9f), 2.0f));
+    }
+
+    public float distance(Vector3 point)
+    {
+        return Mathf.Sqrt(Mathf.Pow((myLocation().x - point.x), 2.0f) + Mathf.Pow((myLocation().z - point.z), 2.0f));
+
+    }
+
+    public float distance (Vector3 first, Vector3 second)
+    {
+        return Mathf.Sqrt(Mathf.Pow((first.x - second.x), 2.0f) + Mathf.Pow((first.z - second.z), 2.0f));
+
     }
 
     Vector2 getRandom() { // randrom through X = -21 and y = -21 and x = 21 ,y = 21
@@ -271,11 +318,15 @@ public class RobotController : MonoBehaviour {
 			break;
 
 		case RunType.three:
-
+                if(curNode == null)
+                {
+                    curNode = aStar.Dequeue();
+                }
+                toMove = moveTowards(curNode.location);
                 //toMove = new Vector3(0, 0, 0);
                 //For whatever else
                 //feel free to add more 
-                toMove = new Vector3(0, 0, 1);
+                //toMove = new Vector3(0, 0, 1);
                 break;
 
 		}
@@ -294,11 +345,7 @@ public class RobotController : MonoBehaviour {
         toMove += new Vector3(-vel.x, -vel.y, -vel.z);
         toMove += location - myLocation();
 
-        return Vector3.zero;
-    }
-
-    public void aStar() {
-
+        return toMove;
     }
 
     public void stop() {
