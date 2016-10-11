@@ -7,13 +7,17 @@ using Priority_Queue;
 
 public class node {
     public Vector2 point;
-    public ArrayList edges;
+    public List<edge> edgesOut;
+    public List<edge> edgesIn;
 
     public node() {
-        edges = new ArrayList();
+        point = new Vector2();
+        edgesOut = new List<edge>();
+        edgesIn = new List<edge>();
     }
     public node(Vector2 gPoint) {
-        edges = new ArrayList();
+        edgesOut = new List<edge>();
+        edgesIn = new List<edge>();
         point = gPoint;
     }
     public void setPoint(Vector2 gPoint) {
@@ -37,34 +41,6 @@ public class edge {
     }
 }
 
-public class line {
-    node start;
-    node end;
-    public line() {
-        start = new node();
-        end = new node();
-    }
-    public float testDistance(Vector2 v, Vector2 w, Vector2 p) {
-        float l2 = Mathf.Pow(distance(v, w), 2.0f);
-            if (l2 == 0.0)
-                return distance(p, v);    
-            float t = Mathf.Max(0, Mathf.Min(1, dot(p - v, w - v) / l2));
-            Vector2 projection = v + t * (w - v);
-            return distance(p, projection);
-    }
-
-    public float dot(Vector2 v, Vector2 w) {
-        return ((v.x * w.x) + (v.y * w.y));
-    }
-
-    public float distance(Vector2 v, Vector2 w) {
-        return Mathf.Sqrt(Mathf.Pow((v.x - w.x), 2.0f) + Mathf.Pow((v.y - w.y), 2.0f));
-    }
-
-}
-
-
-
 
 public class RobotController : MonoBehaviour {
 
@@ -76,12 +52,24 @@ public class RobotController : MonoBehaviour {
 	GameObject followArrow;
 	public RunType runtype; 
 	public enum RunType{one, two, three};
+    //Variables For rrt
     public List<node> nodes;
     System.Random rand;
+
     Node[,] gridNodes;
     Node curNode;
     SimplePriorityQueue<Node> aStar = new SimplePriorityQueue<Node>();
     Field goal;
+
+    public Vector2[,] rrtNodes;
+    public List<Vector2> trail;
+    int percisionOfRrt;
+    int atFollowPoint;
+    float percisionOfRrtFloat;
+    bool followRRT;
+    bool first;
+
+
     // Use this for initialization
     void Start () {
         grid = GameObject.Find("GameObject");
@@ -89,8 +77,12 @@ public class RobotController : MonoBehaviour {
         gridNodes = builder.BuildObject();
 
 		followArrow = GameObject.FindObjectOfType<ObjectFollow> ().gameObject;
+
+        //rrtInit
         nodes = new List<node>();
+        trail = new List<Vector2>();
         rand = new System.Random();
+
 
         if(runtype == RunType.three)
         {
@@ -103,6 +95,12 @@ public class RobotController : MonoBehaviour {
             aStar.Enqueue(n, n.distanceTraveled + n.remainingDistance);
             makeAStar();
         }
+
+        percisionOfRrt = 50;
+        percisionOfRrtFloat = 50.0f;
+        followRRT = true;
+        rrtNodes = new Vector2[percisionOfRrt + 1, percisionOfRrt + 1];
+        first = true;
         //makeRRt();
     }
 
@@ -126,6 +124,56 @@ public class RobotController : MonoBehaviour {
         }
     }
 
+    //This is the start of RRT Code
+    void makeTrail() {
+        bool notAtEnd = true;
+        node traverseNode = nodes.ElementAt(nodes.Count - 1);
+        edge nextEdge = traverseNode.edgesIn.ElementAt(0);
+        int nextNode = nextEdge.end;
+        while (notAtEnd) {
+            if (nextNode == 0) {
+                notAtEnd = false;
+            } else {
+                trail.Add(traverseNode.point);
+                traverseNode = nodes.ElementAt(nextNode);
+                nextEdge = traverseNode.edgesIn.ElementAt(0);
+                nextNode = nextEdge.end;
+            }
+        }
+    }
+
+    public bool pointInShapeTwo(Vector2 v, Vector2 w, Vector2 pt, float tolerance) {
+        Vector2 lineVector = new Vector2(w.x - v.x, w.y - v.y);
+        Vector2 normalized = new Vector2(w.x - v.x, w.y - v.y);
+        normalized.Normalize();
+        Vector2 startToPoint = (pt - v);
+        float t = (startToPoint.x * normalized.x) + (startToPoint.y * normalized.y);
+        t = Mathf.Max(0.0f, t);
+        t = Mathf.Min(t, lineVector.magnitude);
+        Vector2 projection = new Vector2();
+
+        projection = v + ((t) * normalized);
+
+        Vector2 distanceVect = new Vector2();
+        distanceVect = pt - projection;
+
+        if (distanceVect.magnitude < tolerance) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    void generateRrtNodes() {
+        for (int i = 0; i < percisionOfRrt + 1; i++) {
+            for (int j = 0; j < percisionOfRrt + 1; j++) {
+                rrtNodes[i, j] = new Vector2(((42.0f / percisionOfRrtFloat) * j) - 21.0f, ((42.0f / percisionOfRrtFloat) * i) - 21.0f);
+            }
+        }
+    }
+
+
+
     void makeRRt() {
         Vector3 start = myLocation();
         node starter = new node(new Vector2(start.x, start.z));
@@ -133,36 +181,54 @@ public class RobotController : MonoBehaviour {
         bool success = false;
         bool hit = false;
         int closest;
-        float hitDistance = 4.2f;
-        line line = new line();
-        List<Field> fields = getPowerFields();
-        
+
+        float hitDistance = 2.8f;
+        List<Field> fields = getFieldofType(2);
+        float dist;
+        float xMax = -18.9f;
+        float yMax = -18.9f;
+        float distMax = 500.0f;
+        Vector2 closePoint = new Vector2();
         while (!success) {
             Vector2 randpoint = getRandom();
             closest = findClosest(randpoint);
             hit = false;
-    
-            for (int i = 0; i < fields.Count; i++) {
-                Field field = fields.ElementAt(i);
-                if (line.testDistance(randpoint, nodes.ElementAt(closest).point, new Vector2(field.getLocation().x, field.getLocation().z)) < hitDistance) {
-                    hit = true;
+            foreach (Field field in fields) {
+                if (field.fieldType != 1) {
+                    bool distLine = pointInShapeTwo(randpoint, nodes.ElementAt(closest).point, new Vector2(field.getLocation().x, field.getLocation().z), hitDistance);
+                    if (distLine) {
+                        hit = true;
+                    }
                 }
             }
-            if(!hit) {
+            if (!hit) {
                 int count = nodes.Count;
                 node addNode = new node(randpoint);
+                addNode.edgesOut.Add(new edge(closest, count));
+                addNode.edgesIn.Add(new edge(count, closest));
                 nodes.Add(addNode);
-                nodes.ElementAt(closest).edges.Add(new edge(closest, count));
-                if (distance(addNode.point) < 0.5) {
+                nodes.ElementAt(closest).edgesOut.Add(new edge(closest, count));
+                dist = distanceToEnd(addNode.point);
+                if (randpoint.x > xMax) {
+                    xMax = randpoint.x;
+                }
+                if (randpoint.y > yMax) {
+                    yMax = randpoint.y;
+                }
+                if (dist < distMax) {
+                    distMax = dist;
+                    closePoint.x = randpoint.x;
+                    closePoint.y = randpoint.y;
+                }
+                if (dist < 1.4f) {
                     success = true;
                 }
             }
         }
-        int iAmDoneWithLife = 0;
     }
 
-    public float distance(Vector2 testPoint) {
-        return Mathf.Sqrt(Mathf.Pow((testPoint.x - 18.9f), 2.0f) + Mathf.Pow((testPoint.y - 18.9f), 2.0f));
+    public float distanceToEnd(Vector2 testPoint) {
+        return Mathf.Sqrt(Mathf.Pow((18.9f - testPoint.x), 2.0f) + Mathf.Pow((18.9f - testPoint.y), 2.0f));
     }
 
     public float distance(Vector3 point)
@@ -178,20 +244,39 @@ public class RobotController : MonoBehaviour {
     }
 
     Vector2 getRandom() { // randrom through X = -21 and y = -21 and x = 21 ,y = 21
-        float x = (float)(rand.NextDouble() * 42.0);
-        x -= 21;
-        float z = (float)(rand.NextDouble() * 42.0);
-        z -= 21;
-        Vector2 result;
-        result.x = x;
-        result.y = z;
+        bool finished = false;
+        bool pointNotChosen;
+        float offset = 0.01f;
+        int x;
+        int z;
+        Vector2 result = new Vector2();
+        while (!finished) {
+            pointNotChosen = true;
+            x = rand.Next() % percisionOfRrt;
+            z = rand.Next() % percisionOfRrt;
+            result = rrtNodes[x, z];
+            foreach (node point in nodes) {
+                /*
+                if (point.point.x == result.x && point.point.y > result.y) {
+                    pointNotChosen = false;
+                }
+                 */
+                if (point.point.x < (result.x + offset) && point.point.x > (result.x - offset) && point.point.y < (result.y + offset) && point.point.y > (result.y - offset)) {
+                    pointNotChosen = false;
+                }
+
+            }
+            if (pointNotChosen) {
+                finished = true;
+            }
+        }
         return result;
     }
 
     int findClosest(Vector2 testNode) {
         int numberInArray = 0;
         float distance = float.MaxValue;
-        for(int i = 0; i < nodes.Count; i++) {
+        for (int i = 0; i < nodes.Count; i++) {
             node test = nodes.ElementAt(i);
             if (test.distance(testNode) < distance) {
                 distance = test.distance(testNode);
@@ -201,13 +286,30 @@ public class RobotController : MonoBehaviour {
         return numberInArray;
     }
 
-    void testLineViability() {
-
+    float robotDistanceToPoint(Vector2 testPoint) {
+        return Mathf.Sqrt(Mathf.Pow((myLocation().x - testPoint.x), 2.0f) + Mathf.Pow((myLocation().z - testPoint.y), 2.0f));
     }
+    //This is the end of RRT Code
+
+
+
+
+
+
+
 
 
     // Update is called once per frame
     void Update () {
+        //RRT Init
+        if (first && followRRT) {
+            first = false;
+            generateRrtNodes();
+            makeRRt();
+            makeTrail();
+            atFollowPoint = trail.Count - 1;
+        }
+
 
         Vector3 toMove = new Vector3();// getManualInput ();
 	
@@ -318,15 +420,36 @@ public class RobotController : MonoBehaviour {
 			break;
 
 		case RunType.three:
-                if(curNode == null)
-                {
-                    curNode = aStar.Dequeue();
-                }
-                toMove = moveTowards(curNode.location);
-                //toMove = new Vector3(0, 0, 0);
+               //toMove = new Vector3(0, 0, 0);
                 //For whatever else
                 //feel free to add more 
                 //toMove = new Vector3(0, 0, 1);
+
+                //This is the part of RRT Move
+                if (followRRT && atFollowPoint != -1) {
+                    Vector2 goPoint = trail.ElementAt(atFollowPoint);
+                    toMove.x = goPoint.x - myLocation().x;
+                    toMove.z = goPoint.y - myLocation().z;
+                    if (robotDistanceToPoint(goPoint) < 0.5f) {
+                        this.GetComponent<Rigidbody>().velocity = Vector3.zero;
+                        this.GetComponent<Rigidbody>().angularVelocity = Vector3.zero;
+                        atFollowPoint--;
+                        if (atFollowPoint >= 0) {
+                            goPoint = trail.ElementAt(atFollowPoint);
+                            toMove.x = goPoint.x - myLocation().x;
+                            toMove.z = goPoint.y - myLocation().z;
+                            int moveAhead = 90;
+                            toMove *= 10.0f;
+                            for (int i = 0; i < moveAhead; i++) {
+                                move(toMove);
+                            }
+                        }
+
+                    }
+                    if (GetComponent<Rigidbody>().velocity != Vector3.zero) {
+                        followArrow.transform.rotation = Quaternion.LookRotation(GetComponent<Rigidbody>().velocity) * Quaternion.Euler(0, -90, 0);
+                    }
+                }
                 break;
 
 		}
